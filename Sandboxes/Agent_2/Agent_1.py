@@ -982,6 +982,18 @@ import sys
 from typing import Any, get_args, get_origin
 
 
+def _configure_utf8_stdio():
+    """Avoid Windows cp1252 failures when model/history text contains Unicode."""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, OSError):
+            pass
+
+
+_configure_utf8_stdio()
+
+
 from browser_use import Agent
 from browser_use.llm.views import ChatInvokeCompletion
 
@@ -2047,6 +2059,9 @@ async def main():
     # fixed AGENT_TASK env var or an exhausted stdin pipe would either
     # loop forever on the same task or spin with nothing to do.
     pending_task = get_ui_task()
+    # A supervisor-managed invocation has exactly one AGENT_TASK and no
+    # interactive stdin; exit after it so the parent can collect the result.
+    one_shot = bool(os.getenv("SUPERVISOR_MANAGED"))
 
     while True:
         if pending_task:
@@ -2082,6 +2097,9 @@ async def main():
             print()
             print(_boxed(["AGENT ERROR", "", repr(e)[:BANNER_WIDTH - 6]]))
             print("  Continuing -- ready for the next task.")
+
+        if one_shot:
+            break
 
 
 if __name__ == "__main__":

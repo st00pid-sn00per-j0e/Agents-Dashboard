@@ -735,6 +735,30 @@ async def run_agent(name: str, folder: Path, task: str) -> str:
     return stdout or stderr or f"{name} completed without output"
 
 
+def show_agent_responses(outputs: Dict[str, str]) -> None:
+    """Render each worker's raw response before the synthesized result.
+
+    Workers are intentionally captured rather than inheriting the supervisor's
+    stdout, so their output cannot corrupt the interactive prompt.  Rendering
+    it here keeps that isolation while making each agent's result observable in
+    the CLI, including errors returned by ``asyncio.gather``.
+    """
+    if not outputs:
+        return
+
+    console.print()
+    for name, output in outputs.items():
+        failed = output.startswith("ERROR ")
+        console.print(
+            Panel(
+                Text(output),
+                title=f"AGENT RESPONSE · {name}",
+                border_style="red" if failed else GREEN,
+            )
+        )
+    console.print()
+
+
 # ----------------------------------------------------------------------------
 # The actual reasoning step: understand the WHOLE request at once, and
 # decide (a) direct answer vs dispatch, (b) if dispatch, shared project vs
@@ -941,6 +965,7 @@ async def main():
             n: ("ERROR " + str(r) if isinstance(r, Exception) else r)
             for n, r in zip(names, results)
         }
+        show_agent_responses(outputs)
 
         try:
             with console.status(f"[{GREEN}]Merging results...[/{GREEN}]", spinner="dots"):
