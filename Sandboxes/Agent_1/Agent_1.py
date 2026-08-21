@@ -2546,6 +2546,18 @@ import sys
 from typing import Any, get_args, get_origin
 
 
+def _configure_utf8_stdio():
+    """Avoid Windows cp1252 failures when model/history text contains Unicode."""
+    for stream in (sys.stdout, sys.stderr):
+        try:
+            stream.reconfigure(encoding="utf-8", errors="replace")
+        except (AttributeError, OSError):
+            pass
+
+
+_configure_utf8_stdio()
+
+
 from browser_use import Agent
 
 try:
@@ -2586,6 +2598,7 @@ VISION_CAPABLE_PROVIDERS = {
     "Together",
     "CopilotAccount",
     "MetaAI",
+    "AnyProvider"
 }
 
 # Substrings that identify a MODEL as actually vision-capable, regardless
@@ -3943,6 +3956,10 @@ async def main():
     # fixed AGENT_TASK env var or an exhausted stdin pipe would either
     # loop forever on the same task or spin with nothing to do.
     pending_task = get_ui_task()
+    # The supervisor launches workers with AGENT_TASK and no stdin.  A worker
+    # must return after that single task; otherwise it waits for another task
+    # forever and the supervisor eventually reports a timeout.
+    one_shot = bool(os.getenv("SUPERVISOR_MANAGED"))
 
     while True:
         if pending_task:
@@ -3978,6 +3995,9 @@ async def main():
             print()
             print(_boxed(["AGENT ERROR", "", repr(e)[:BANNER_WIDTH - 6]]))
             print("  Continuing -- ready for the next task.")
+
+        if one_shot:
+            break
 
 
 if __name__ == "__main__":

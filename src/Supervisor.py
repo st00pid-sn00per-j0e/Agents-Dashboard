@@ -483,6 +483,10 @@ GRAPH_DB = ROOT / "kuzu_db"
 REASONING_TIMEOUT_SECS = 60
 REASONING_MAX_RETRIES = 3
 REASONING_RETRY_BACKOFF = 2.0
+# Agent launchers can emit verbose provider-scan/browser logs. Keep merging
+# bounded well below the reasoning model context window while preserving both
+# startup context and the final result normally emitted at the end.
+MERGE_OUTPUT_LIMIT_CHARS = 24_000
 
 GREEN = "#00E6A6"  # matches Nizami's BoxTech accent green
 console = Console()
@@ -647,15 +651,27 @@ async def think(prompt: str, system: str = "") -> str:
 
 
 def _extract_json(raw: str) -> dict:
+    """Extract one JSON object without being confused by surrounding prose.
+
+    Model responses occasionally include an explanation before or after the
+    object.  A greedy regular expression treats two objects as one invalid
+    document, so use ``raw_decode`` at every object boundary instead.
+    """
     try:
-        return json.loads(raw)
+        value = json.loads(raw)
+        if isinstance(value, dict):
+            return value
     except json.JSONDecodeError:
-        m = re.search(r"\{.*\}", raw, re.S)
-        if m:
-            try:
-                return json.loads(m.group())
-            except json.JSONDecodeError:
-                pass
+        pass
+
+    decoder = json.JSONDecoder()
+    for match in re.finditer(r"\{", raw):
+        try:
+            value, _ = decoder.raw_decode(raw[match.start():])
+            if isinstance(value, dict):
+                return value
+        except json.JSONDecodeError:
+            continue
     raise ValueError(f"Could not parse JSON from reasoning output: {raw[:300]}")
 
 
@@ -676,15 +692,28 @@ def discover_agents() -> Dict[str, Path]:
 
 
 async def run_agent(name: str, folder: Path, task: str) -> str:
+    if not isinstance(task, str) or not task.strip():
+        raise ValueError(f"{name} received an empty or non-text task")
+
     env = os.environ.copy()
     env["AGENT_TASK"] = task
     env["BROWSER_PROFILE"] = str(ROOT / "profiles" / name)
+    env["SUPERVISOR_MANAGED"] = "1"
+    # Windows console sessions commonly default to cp1252.  Agent results
+    # include arbitrary web/model text, so force UTF-8 before the child
+    # interpreter starts rather than allowing history rendering to crash on
+    # characters such as U+2011 (non-breaking hyphen).
+    env["PYTHONIOENCODING"] = "utf-8"
 
     proc = await asyncio.create_subprocess_exec(
         sys.executable,
         str(folder / AGENT_SCRIPT),
         cwd=str(folder),
         env=env,
+        # A worker receives its task through AGENT_TASK.  Inheriting the
+        # supervisor's terminal lets a persistent worker steal user input
+        # after it finishes, which previously made dispatches appear hung.
+        stdin=asyncio.subprocess.DEVNULL,
         stdout=asyncio.subprocess.PIPE,
         stderr=asyncio.subprocess.PIPE,
     )
@@ -695,10 +724,15 @@ async def run_agent(name: str, folder: Path, task: str) -> str:
         await proc.communicate()
         raise RuntimeError(f"{name} timeout")
 
-    text = out.decode(errors="replace")
-    if not text:
-        text = err.decode(errors="replace")
-    return text
+    stdout = out.decode(errors="replace").strip()
+    stderr = err.decode(errors="replace").strip()
+    if proc.returncode:
+        detail = "\n".join(part for part in (stdout, stderr) if part)
+        raise RuntimeError(
+            f"{name} exited with code {proc.returncode}"
+            + (f": {detail}" if detail else "")
+        )
+    return stdout or stderr or f"{name} completed without output"
 
 
 # ----------------------------------------------------------------------------
@@ -758,7 +792,7 @@ async def reason_about_task(task: str, agent_names: List[str]) -> dict:
         raw = await think(prompt, ROUTING_SYSTEM_PROMPT)
         try:
             parsed = _extract_json(raw)
-            if parsed.get("mode") == "direct" and "answer" in parsed:
+            if parsed.get("mode") == "direct" and isinstance(parsed.get("answer"), str):
                 return parsed
         except ValueError:
             pass
@@ -771,15 +805,34 @@ Available agents: {agent_names}
 
 Decide and respond with the JSON object described in your instructions."""
     raw = await think(prompt, ROUTING_SYSTEM_PROMPT)
-    parsed = _extract_json(raw)
+    try:
+        parsed = _extract_json(raw)
+    except ValueError:
+        # A provider can return a legitimate plain-text response (notably a
+        # safety refusal) despite the JSON-only routing instruction. Present
+        # that response to the user instead of misreporting it as a parser
+        # failure or retrying the request through a worker.
+        answer = raw.strip()
+        if not answer:
+            answer = "The reasoning engine returned an empty response."
+        return {"mode": "direct", "answer": answer}
 
     if parsed.get("mode") not in ("direct", "dispatch"):
         raise ValueError(f"Reasoning output had invalid mode: {parsed}")
 
-    if parsed["mode"] == "dispatch":
+    if parsed["mode"] == "direct":
+        if not isinstance(parsed.get("answer"), str):
+            raise ValueError("Reasoning output for direct mode did not include text answer")
+    else:
         plan = parsed.get("plan") or {}
+        if not isinstance(plan, dict):
+            raise ValueError("Reasoning output plan must be an object")
         # keep only agents that actually exist
-        parsed["plan"] = {n: t for n, t in plan.items() if n in agent_names}
+        parsed["plan"] = {
+            n: t.strip()
+            for n, t in plan.items()
+            if n in agent_names and isinstance(t, str) and t.strip()
+        }
         if not parsed["plan"]:
             raise ValueError(f"Reasoning produced no valid agent assignments: {parsed}")
         if parsed.get("distribution") not in ("shared", "split"):
@@ -790,6 +843,18 @@ Decide and respond with the JSON object described in your instructions."""
 
 
 async def merge_outputs(task: str, distribution: str, outputs: Dict[str, str]) -> str:
+    def compact_output(output: str) -> str:
+        if len(output) <= MERGE_OUTPUT_LIMIT_CHARS:
+            return output
+        head_size = 2_000
+        tail_size = MERGE_OUTPUT_LIMIT_CHARS - head_size
+        omitted = len(output) - head_size - tail_size
+        return (
+            output[:head_size]
+            + f"\n\n[... {omitted:,} characters of verbose worker logs omitted ...]\n\n"
+            + output[-tail_size:]
+        )
+
     style = (
         "The agents were all working on ONE shared project together — "
         "synthesize their outputs into a single coherent final result."
@@ -797,8 +862,12 @@ async def merge_outputs(task: str, distribution: str, outputs: Dict[str, str]) -
         else "The agents each handled a separate, independent subtask — "
         "present their results clearly grouped by agent, then add a brief overall summary."
     )
+    mergeable_outputs = {
+        name: compact_output(output)
+        for name, output in outputs.items()
+    }
     return await think(
-        f"Original request:\n{task}\n\nAgent outputs:\n{json.dumps(outputs, indent=2)}",
+        f"Original request:\n{task}\n\nAgent outputs:\n{json.dumps(mergeable_outputs, indent=2)}",
         f"You are merging results from sandboxed agents. {style}",
     )
 
@@ -828,7 +897,11 @@ async def main():
     console.print()
 
     while True:
-        task = console.input(f"[bold {GREEN}]Task>[/bold {GREEN}] ").strip()
+        try:
+            task = console.input(f"[bold {GREEN}]Task>[/bold {GREEN}] ").strip()
+        except (EOFError, KeyboardInterrupt):
+            console.print("\nExiting.")
+            break
         if task.lower() in ("exit", "quit"):
             break
         if not task:
@@ -873,8 +946,12 @@ async def main():
             with console.status(f"[{GREEN}]Merging results...[/{GREEN}]", spinner="dots"):
                 final = await merge_outputs(task, distribution, outputs)
         except Exception as e:
-            console.print(f"[red]Merge failed:[/red] {e}\n")
-            continue
+            # Agent execution has already completed. Preserve and show its
+            # raw results rather than discarding useful work when the optional
+            # synthesis model is unavailable or rejects a prompt.
+            sections = [f"[{name}]\n{output}" for name, output in outputs.items()]
+            final = "\n\n".join(sections)
+            console.print(f"[yellow]Merge unavailable; showing raw agent results:[/yellow] {e}")
 
         uid = store_session(task, "dispatch", distribution, final, outputs)
 
