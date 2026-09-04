@@ -1,0 +1,35 @@
+.chat-section{margin-top:0}.chat-section .section-title{display:flex;flex-direction:column;align-items:flex-start;gap:7px;margin:0 0 18px;font-size:26px;letter-spacing:-.04em}.chat-eyebrow{color:var(--accent);font:600 11px var(--font-mono);letter-spacing:.13em;text-transform:uppercase}.chat-shell{display:flex;min-height:390px;overflow:hidden;border:1px solid var(--border);border-radius:15px;background:var(--surface)}.chat-side{width:218px;padding:19px 14px;border-right:1px solid var(--border);background:rgba(0,0,0,.08);display:flex;flex-direction:column}.agents-list{display:flex;flex-direction:column;gap:5px}.agents-list h4{margin:0 7px 10px;color:var(--text-muted);font:10px var(--font-mono);letter-spacing:.1em;text-transform:uppercase}.agent-btn{padding:10px;border:1px solid transparent;border-radius:8px;color:var(--text-secondary);background:transparent;font:12px var(--font-mono);display:flex;align-items:center;justify-content:space-between}.agent-btn i{width:6px;height:6px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px rgba(86,227,159,.6)}.chat-info{margin:auto 7px 0;padding-top:15px;border-top:1px solid var(--border);color:var(--text-muted);font-size:11px;line-height:1.55}.chat-info p{margin:0 0 7px}.chat-info strong{color:var(--accent)}.chat-main{min-width:0;flex:1;display:flex;flex-direction:column}.messages{height:310px;padding:20px;overflow-y:auto;display:flex;flex-direction:column;gap:12px}.message{max-width:min(82%,590px);padding:10px 12px;border:1px solid rgba(255,255,255,.06);border-radius:9px;background:rgba(255,255,255,.025)}.msg-user{align-self:flex-end;color:#dcf9ea;background:rgba(49,148,103,.23);border-color:rgba(86,227,159,.2)}.msg-system{align-self:center;max-width:90%;color:var(--text-secondary);background:transparent;border:0;text-align:center;font-size:11px}.msg-agent{border-left:2px solid var(--accent)}.message-meta{display:flex;gap:8px;margin-bottom:6px;color:var(--text-muted);font:10px var(--font-mono)}.message-sender{color:var(--accent);font-weight:600}.msg-user .message-sender{color:#b2f5d5}.message-route{padding:2px 5px;border-radius:4px;color:var(--text-muted);background:rgba(255,255,255,.04);font-size:9px}.message-time{margin-left:auto}.message-body{color:var(--text-secondary);white-space:pre-wrap;font-size:12px;line-height:1.55}.msg-user .message-body{color:#d9f7e8}.chat-input{padding:13px;border-top:1px solid var(--border)}.input-controls{display:flex;gap:8px}.routing-label,.chat-input input{height:39px;border:1px solid var(--border);border-radius:7px;color:var(--text-primary);background:rgba(0,0,0,.14)}.routing-label{width:142px;padding:0 10px;display:flex;align-items:center;color:var(--accent);font:10px var(--font-mono)}.chat-input input{min-width:0;flex:1;padding:0 12px;font-size:12px}.chat-input input::placeholder{color:var(--text-muted)}.send-btn{min-width:72px;border:0;border-radius:7px;color:#062017;background:var(--accent);cursor:pointer;font-size:12px;font-weight:700}.chat-input input:focus{border-color:var(--accent);outline:none}.send-btn:disabled,.chat-input input:disabled{cursor:wait;opacity:.6}@media(max-width:650px){.chat-shell{flex-direction:column}.chat-side{width:100%;padding:13px;border-right:0;border-bottom:1px solid var(--border)}.agents-list{flex-direction:row;flex-wrap:wrap}.agent-btn{min-width:110px}.agents-list h4{width:100%;margin-bottom:2px}.chat-info{display:none}.messages{height:290px;padding:14px}.message{max-width:93%}.input-controls{flex-wrap:wrap}.routing-label{width:100%}.chat-input input{min-width:calc(100% - 82px)}
+
+/* --- Live preview dock and PIP floating windows --- */
+.preview-dock{margin:10px 0 18px;border-radius:12px;padding:12px;border:1px solid var(--border);background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.02));}
+.preview-heading{display:flex;align-items:center;gap:10px;font-weight:700;color:var(--text-primary);margin-bottom:10px}
+.preview-heading small{font-weight:600;color:var(--text-muted);font-size:11px;margin-left:6px}
+.preview-grid{display:flex;gap:12px;align-items:flex-start}
+.browser-preview{width:31%;min-width:160px;border-radius:10px;overflow:hidden;background:rgba(0,0,0,.04);border:1px solid rgba(255,255,255,.03)}
+.browser-chrome{display:flex;align-items:center;justify-content:space-between;padding:8px 10px;background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.02));font-size:12px;color:var(--text-muted)}
+.browser-chrome span{display:inline-flex;gap:6px}
+.browser-chrome i{display:inline-block;width:8px;height:8px;border-radius:50%;background:rgba(255,255,255,.16)}
+.preview-viewport{position:relative;height:120px;background:#0b0f10}
+.preview-viewport img{width:100%;height:100%;object-fit:cover;display:block}
+.preview-waiting{position:absolute;left:0;right:0;top:0;bottom:0;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:12px;pointer-events:none}
+.preview-viewport img.is-unavailable{opacity:.2;filter:grayscale(80%)}
+
+/* Floating PIP windows */
+.pip-container{position:fixed;right:18px;bottom:18px;display:flex;flex-direction:column;gap:12px;z-index:1200}
+.pip-window{width:220px;height:140px;border-radius:10px;overflow:hidden;background:rgba(3,7,6,.6);backdrop-filter:blur(6px);border:1px solid rgba(255,255,255,.04);box-shadow:0 10px 30px rgba(0,0,0,.6);display:flex;flex-direction:column}
+.pip-header{display:flex;align-items:center;justify-content:space-between;padding:6px 8px;font-size:12px;color:var(--text-primary);background:linear-gradient(180deg, rgba(255,255,255,.012), rgba(0,0,0,.02))}
+.pip-live{background:var(--accent);color:#06120b;padding:3px 6px;border-radius:8px;font-weight:700;font-size:11px}
+.pip-body{flex:1;display:block}
+.pip-body img{width:100%;height:100%;object-fit:cover;display:block}
+.pip-body video{width:100%;height:100%;object-fit:cover;display:block}
+
+.pip-controls{display:flex;align-items:center;gap:8px}
+.pip-pip-btn{background:transparent;border:1px solid rgba(255,255,255,0.06);color:var(--text-primary);padding:4px 8px;border-radius:6px;font-size:11px;cursor:pointer;margin-right:8px}
+.pip-pip-btn:active{transform:translateY(1px)}
+
+/* stacked offset for clarity */
+.pip-1{transform:translateY(0)}
+.pip-2{transform:translateY(-6px)}
+.pip-3{transform:translateY(-12px)}
+
+@media(max-width:850px){.preview-grid{flex-direction:column}.browser-preview{width:100%}.pip-container{right:10px;bottom:10px}}

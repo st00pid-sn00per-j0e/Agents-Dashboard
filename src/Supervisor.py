@@ -479,6 +479,7 @@ AGENT_SCRIPT = "Agent_1.py"
 
 STATE_DB = ROOT / "supervisor.db"
 GRAPH_DB = ROOT / "kuzu_db"
+PREVIEW_DIR = ROOT / "runtime" / "previews"
 
 REASONING_TIMEOUT_SECS = 60
 REASONING_MAX_RETRIES = 3
@@ -487,6 +488,7 @@ REASONING_RETRY_BACKOFF = 2.0
 # bounded well below the reasoning model context window while preserving both
 # startup context and the final result normally emitted at the end.
 MERGE_OUTPUT_LIMIT_CHARS = 24_000
+WEB_AGENT_OUTPUT_LIMIT_CHARS = 12_000
 
 GREEN = "#00E6A6"  # matches Nizami's BoxTech accent green
 console = Console()
@@ -699,6 +701,9 @@ async def run_agent(name: str, folder: Path, task: str) -> str:
     env["AGENT_TASK"] = task
     env["BROWSER_PROFILE"] = str(ROOT / "profiles" / name)
     env["SUPERVISOR_MANAGED"] = "1"
+    PREVIEW_DIR.mkdir(parents=True, exist_ok=True)
+    env["AGENT_PREVIEW_DIR"] = str(PREVIEW_DIR)
+    env["AGENT_NAME"] = name
     # Windows console sessions commonly default to cp1252.  Agent results
     # include arbitrary web/model text, so force UTF-8 before the child
     # interpreter starts rather than allowing history rendering to crash on
@@ -894,6 +899,76 @@ async def merge_outputs(task: str, distribution: str, outputs: Dict[str, str]) -
         f"Original request:\n{task}\n\nAgent outputs:\n{json.dumps(mergeable_outputs, indent=2)}",
         f"You are merging results from sandboxed agents. {style}",
     )
+
+
+# ----------------------------------------------------------------------------
+# Programmatic API
+# ----------------------------------------------------------------------------
+async def execute_task(task: str) -> dict:
+    """Run one supervisor request for the web API or another local caller.
+
+    This is deliberately independent of Rich/terminal rendering.  It preserves
+    the CLI's complete decision, dispatch, merge, and persistence pipeline and
+    returns only the data required by a transport/UI layer.
+    """
+    task = task.strip()
+    if not task:
+        raise ValueError("Task cannot be empty.")
+    if len(task) > 20_000:
+        raise ValueError("Task exceeds the 20,000-character limit.")
+
+    init_state_db()
+    agents = discover_agents()
+    decision = await reason_about_task(task, list(agents))
+
+    if decision["mode"] == "direct":
+        answer = decision.get("answer", "").strip()
+        session_id = store_session(task, "direct", None, answer, {})
+        return {
+            "session_id": session_id,
+            "mode": "direct",
+            "distribution": None,
+            "agents": [],
+            "reply": answer,
+        }
+
+    distribution = decision["distribution"]
+    plan = decision["plan"]
+    names = list(plan.keys())
+    results = await asyncio.gather(
+        *(run_agent(name, agents[name], subtask) for name, subtask in plan.items()),
+        return_exceptions=True,
+    )
+    outputs = {
+        name: ("ERROR " + str(result) if isinstance(result, Exception) else result)
+        for name, result in zip(names, results)
+    }
+
+    try:
+        final = await merge_outputs(task, distribution, outputs)
+    except Exception:
+        # Dispatch results are still useful if the optional synthesis step is
+        # unavailable. Keep the same graceful-degradation behavior as the CLI.
+        final = "\n\n".join(f"[{name}]\n{output}" for name, output in outputs.items())
+
+    session_id = store_session(task, "dispatch", distribution, final, outputs)
+    web_outputs = {
+        name: (
+            output
+            if len(output) <= WEB_AGENT_OUTPUT_LIMIT_CHARS
+            else output[:WEB_AGENT_OUTPUT_LIMIT_CHARS]
+            + f"\n\n[... {len(output) - WEB_AGENT_OUTPUT_LIMIT_CHARS:,} characters omitted from the web console ...]"
+        )
+        for name, output in outputs.items()
+    }
+    return {
+        "session_id": session_id,
+        "mode": "dispatch",
+        "distribution": distribution,
+        "agents": names,
+        "agent_outputs": web_outputs,
+        "reply": final,
+    }
 
 
 # ----------------------------------------------------------------------------
