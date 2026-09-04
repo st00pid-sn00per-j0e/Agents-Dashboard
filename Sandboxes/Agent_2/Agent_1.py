@@ -1948,6 +1948,27 @@ AGENT_PERSISTENCE_GUIDANCE = (
 )
 
 
+def publish_live_preview(browser_state, _model_output, _step):
+    """Atomically publish the current browser-use screenshot for the local UI."""
+    screenshot = getattr(browser_state, "screenshot", None)
+    preview_dir = os.getenv("AGENT_PREVIEW_DIR")
+    agent_name = os.getenv("AGENT_NAME")
+    if not screenshot or not preview_dir or not agent_name:
+        return
+    try:
+        import base64
+        from pathlib import Path
+        target_dir = Path(preview_dir)
+        target_dir.mkdir(parents=True, exist_ok=True)
+        target = target_dir / f"{agent_name}.png"
+        temporary = target.with_suffix(".tmp")
+        temporary.write_bytes(base64.b64decode(screenshot))
+        temporary.replace(target)
+    except Exception:
+        # Preview capture must never interrupt task execution.
+        pass
+
+
 def build_agent(task, controller=None):
     """
     Construct the browser-use Agent with persistence guidance, terminal
@@ -1967,6 +1988,12 @@ def build_agent(task, controller=None):
     )
 
     optional_kwarg_sets = [
+        dict(
+            **controller_kwargs,
+            register_new_step_callback=publish_live_preview,
+            extend_system_message=AGENT_PERSISTENCE_GUIDANCE,
+            max_failures=8,
+        ),
         dict(
             **controller_kwargs,
             extend_system_message=AGENT_PERSISTENCE_GUIDANCE,
