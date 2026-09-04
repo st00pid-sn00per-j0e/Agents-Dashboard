@@ -1,0 +1,24 @@
+2026-08-22 10:31:00.044: [INFO] CurrentProfilePath: C:\Users\Nizam\Desktop\Agents-Dashboard\Sandboxes\profiles\Agent_1\Default
+2026-08-22 10:31:00.044: [INFO] Profiles total count: 1
+2026-08-22 10:31:00.044: [INFO] Profile: name=Profile 1 path=C:\Users\Nizam\Desktop\Agents-Dashboard\Sandboxes\profiles\Agent_1\Default lastActive=2026-08-22T10:31:00.005Z
+2026-08-22 10:31:00.044: [INFO] LastUsedProfileDir: C:\Users\Nizam\Desktop\Agents-Dashboard\Sandboxes\profiles\Agent_1\Default
+2026-08-22 10:31:00.045: [INFO] MostRecentlyActiveProfile: name=Profile 1 path=C:\Users\Nizam\Desktop\Agents-Dashboard\Sandboxes\profiles\Agent_1\Default lastActive=2026-08-22T10:31:00.005Z
+2026-08-22 10:31:00.045: [INFO] OnDoneLoading sync enabled: 0
+2026-08-22 10:31:00.045: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-08-22 10:31:00.045: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-08-22 10:31:00.045: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-22 10:31:10.125: [INFO] VisibilityChanged: 0
+2026-08-22 10:31:10.189: [INFO] VisibilityChanged: 1
+2026-08-22 10:32:25.858: [INFO] CurrentProfilePath: C:\Users\Nizam\Desktop\Agents-Dashboard\Sandboxes\profiles\Agent_1\Default
+2026-08-22 10:32:25.858: [INFO] Profiles total count: 1
+2026-08-22 10:32:25.859: [INFO] Profile: name=Personal path=C:\Users\Nizam\Desktop\Agents-Dashboard\Sandboxes\profiles\Agent_1\Default lastActive=2026-08-22T10:32:25.833Z
+2026-08-22 10:32:25.859: [INFO] LastUsedProfileDir: C:\Users\Nizam\Desktop\Agents-Dashboard\Sandboxes\profiles\Agent_1\Default
+2026-08-22 10:32:25.859: [INFO] MostRecentlyActiveProfile: name=Personal path=C:\Users\Nizam\Desktop\Agents-Dashboard\Sandboxes\profiles\Agent_1\Default lastActive=2026-08-22T10:32:25.833Z
+2026-08-22 10:32:25.859: [INFO] OnDoneLoading sync enabled: 0
+2026-08-22 10:32:25.859: [INFO] BookmarkModelLoaded, ids_reassigned: 0
+2026-08-22 10:32:25.859: [INFO] BookmarksLoadDropped droppedNodes=0
+2026-08-22 10:32:25.859: [INFO] BookmarksSnapshot Startup total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1
+2026-08-22 10:32:32.353: [INFO] VisibilityChanged: 0
+2026-08-22 10:32:32.388: [INFO] VisibilityChanged: 1
+2026-08-22 10:32:51.656: [INFO] VisibilityChanged: 0
+2026-08-22 10:42:02.908: [INFO] BookmarksSnapshot Shutdown total=0 bar=0 other=0 mobile=0 showBar=0 showBarNTP=1

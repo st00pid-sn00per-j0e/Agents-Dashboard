@@ -1,0 +1,6 @@
+2026/08/22-15:32:32.955 5c80 Reusing MANIFEST C:\Users\Nizam\Desktop\Agents-Dashboard\Sandboxes\profiles\Agent_1\Default\EdgeCoupons/coupons_data.db/MANIFEST-000001
+2026/08/22-15:32:32.957 5c80 Recovering log #3
+2026/08/22-15:32:32.957 5c80 Reusing old log C:\Users\Nizam\Desktop\Agents-Dashboard\Sandboxes\profiles\Agent_1\Default\EdgeCoupons/coupons_data.db/000003.log 
+2026/08/22-15:32:53.613 47b0 Level-0 table #5: started
+2026/08/22-15:32:53.621 47b0 Level-0 table #5: 683307 bytes OK
+2026/08/22-15:32:53.623 47b0 Delete type=0 #3
